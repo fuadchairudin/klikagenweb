@@ -1,9 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import Link from "next/link";
-import Image from "next/image";
 import { formatRp } from "@/lib/utils";
-import { ThemeToggle } from "@/components/ThemeToggle";
-import { Wallet, TrendingUp, Activity, CheckCircle2, Clock, XCircle, Menu } from "lucide-react";
+import { Wallet, TrendingUp, Activity, CheckCircle2, Clock, XCircle } from "lucide-react";
 
 // Menonaktifkan caching agar selalu mengambil data transaksi terbaru dari DB
 export const dynamic = "force-dynamic";
@@ -49,45 +46,6 @@ export default async function DashboardPage() {
 
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-16 transition-colors duration-500 font-sans">
-      {/* Navbar Murni Glassmorphism */}
-      <header className="sticky top-0 z-50 bg-white/70 dark:bg-slate-900/60 backdrop-blur-xl border-b border-white/40 dark:border-slate-800/60 shadow-sm transition-colors">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 md:h-20 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-             <div className="relative w-10 h-10 md:w-12 md:h-12 drop-shadow-sm">
-              <Image 
-                src="/app_logo.png" 
-                alt="KlikAgen Logo" 
-                fill 
-                className="object-contain" 
-              />
-            </div>
-            <div>
-              <h1 className="font-extrabold text-lg md:text-xl tracking-tight text-slate-800 dark:text-white bg-clip-text">
-                KlikAgen Monitor
-              </h1>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                </span>
-                <p className="text-[10px] md:text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
-                  Live Sync Active
-                </p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-2 sm:gap-4">
-             <ThemeToggle />
-             {/* Mobile Menu Button - Optional for future expansion */}
-             <button className="md:hidden p-2 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 transition-colors">
-               <Menu className="w-5 h-5" />
-             </button>
-          </div>
-        </div>
-      </header>
-
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 md:mt-10 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
         
         {/* Ringkasan Finansial Hari Ini */}
@@ -329,6 +287,5 @@ export default async function DashboardPage() {
         </section>
 
       </main>
-    </div>
   );
 }
