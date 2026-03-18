@@ -1,0 +1,149 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ═══════════════════════════════════════
+// CLOUD TABLES (Read-Replica of SQLite)
+// ═══════════════════════════════════════
+// Note: Setiap tabel memiliki 'localId' yang harus UNIQUE untuk meminimalisir duplikasi data
+// saat sinkronisasi offline (Upsert Handling).
+
+model Wallet {
+  id             Int              @id @default(autoincrement())
+  localId        Int              @unique // ID asli dari SQLite Desktop
+  type           String           @default("Digital")
+  name           String
+  balance        Float            @default(0)
+  syncedAt       DateTime         @default(now())
+
+  // Relasi
+  transactions   Transaction[]
+  expenses       Expense[]
+  receivableLogs ReceivableLog[]
+  adjustments    Adjustment[]     @relation("AdjustmentSource")
+  adjustmentsIn  Adjustment[]     @relation("AdjustmentTarget")
+
+  @@map("wallets")
+}
+
+model Service {
+  id             Int              @id @default(autoincrement())
+  localId        Int              @unique
+  name           String
+  adminBank      Float            @default(0)
+  syncedAt       DateTime         @default(now())
+  
+  transactions   Transaction[]
+
+  @@map("services")
+}
+
+model Transaction {
+  id             Int              @id @default(autoincrement())
+  localId        Int              @unique
+  type           String           // 'Transfer' atau 'Tarik Tunai'
+  amount         Float
+  adminBank      Float            @default(0)
+  adminUser      Float            @default(0)
+  profit         Float            @default(0)
+  isPiutang      Int              @default(0) // 0 false, 1 true
+  customerName   String?
+  createdAt      DateTime
+  syncedAt       DateTime         @default(now())
+  
+  // Relasi Foreign Keys
+  walletId       Int              @default(1)
+  wallet         Wallet           @relation(fields: [walletId], references: [localId])
+  
+  receivableId   Int?
+  receivable     Receivable?      @relation(fields: [receivableId], references: [localId])
+  
+  serviceId      Int?
+  service        Service?         @relation(fields: [serviceId], references: [localId])
+
+  @@map("transactions")
+}
+
+model Expense {
+  id             Int              @id @default(autoincrement())
+  localId        Int              @unique
+  category       String
+  amount         Float
+  description    String
+  createdAt      DateTime
+  syncedAt       DateTime         @default(now())
+  
+  // Relasi
+  walletId       Int              @default(2)
+  wallet         Wallet           @relation(fields: [walletId], references: [localId])
+
+  @@map("expenses")
+}
+
+model Receivable {
+  id             Int              @id @default(autoincrement())
+  localId        Int              @unique
+  customerName   String
+  totalDebt      Float
+  status         String           // 'Belum Lunas' atau 'Lunas'
+  syncedAt       DateTime         @default(now())
+
+  // Relasi
+  transactions   Transaction[]
+  logs           ReceivableLog[]
+
+  @@map("receivables")
+}
+
+model ReceivableLog {
+  id             Int              @id @default(autoincrement())
+  localId        Int              @unique
+  amountPaid     Float
+  createdAt      DateTime
+  syncedAt       DateTime         @default(now())
+  
+  // Relasi
+  receivableId   Int
+  receivable     Receivable       @relation(fields: [receivableId], references: [localId])
+  
+  walletId       Int              @default(2)
+  wallet         Wallet           @relation(fields: [walletId], references: [localId])
+
+  @@map("receivable_logs")
+}
+
+model Adjustment {
+  id             Int              @id @default(autoincrement())
+  localId        Int              @unique
+  type           String           // 'Penambahan', 'Tarik Prive', 'Koreksi Minus', 'Pindah Saldo'
+  amount         Float
+  fee            Float            @default(0)
+  description    String?
+  createdAt      DateTime
+  syncedAt       DateTime         @default(now())
+
+  // Relasi
+  walletId       Int              @default(1)
+  wallet         Wallet           @relation("AdjustmentSource", fields: [walletId], references: [localId])
+  
+  targetWalletId Int?
+  targetWallet   Wallet?          @relation("AdjustmentTarget", fields: [targetWalletId], references: [localId])
+
+  @@map("adjustments")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  localId   Int      @unique
+  username  String   @unique
+  password  String
+  role      String   @default("Kasir")
+  syncedAt  DateTime @default(now())
+
+  @@map("users")
+}
