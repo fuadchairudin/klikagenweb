@@ -25,7 +25,7 @@ body {
 
 /* Print Styles */
 @media print {
-  header, .print\\:hidden { display: none !important; }
+  header, .print\:hidden { display: none !important; }
   body, .dark { background: white !important; color: black !important; }
   * { color-adjust: exact; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   main { padding: 0 !important; margin: 0 !important; }
