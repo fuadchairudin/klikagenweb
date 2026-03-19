@@ -2,13 +2,54 @@
 
 import { useState, useMemo } from "react";
 import { formatRp } from "@/lib/utils";
-import { Search, ChevronLeft, ChevronRight, CheckCircle2, XCircle } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, CheckCircle2, XCircle, CalendarDays, TrendingUp, ReceiptText, Activity } from "lucide-react";
 
 export function TransactionTable({ data }: { data: any[] }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("Semua");
+  const [filterTime, setFilterTime] = useState("Semua Waktu");
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
+
+  // Helper: get date range for time filter
+  function getDateRange(filter: string): { start: Date; end: Date } | null {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayEnd = new Date(todayStart);
+    todayEnd.setDate(todayEnd.getDate() + 1);
+
+    switch (filter) {
+      case "Hari Ini":
+        return { start: todayStart, end: todayEnd };
+      case "Kemarin": {
+        const yesterdayStart = new Date(todayStart);
+        yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+        return { start: yesterdayStart, end: todayStart };
+      }
+      case "Minggu Ini": {
+        const dayOfWeek = todayStart.getDay(); // 0=Sun
+        const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        const weekStart = new Date(todayStart);
+        weekStart.setDate(weekStart.getDate() - mondayOffset);
+        return { start: weekStart, end: todayEnd };
+      }
+      case "Bulan Ini": {
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        return { start: monthStart, end: todayEnd };
+      }
+      case "Custom": {
+        if (!customStart) return null;
+        const s = new Date(customStart);
+        const e = customEnd ? new Date(customEnd) : new Date(todayEnd);
+        e.setDate(e.getDate() + 1); // include end day
+        return { start: s, end: e };
+      }
+      default:
+        return null;
+    }
+  }
 
   // Filter Data
   const filteredData = useMemo(() => {
@@ -16,6 +57,15 @@ export function TransactionTable({ data }: { data: any[] }) {
     
     if (filterType !== "Semua") {
       result = result.filter(t => t.type === filterType);
+    }
+
+    // Time filter
+    const range = getDateRange(filterTime);
+    if (range) {
+      result = result.filter(t => {
+        const d = new Date(t.createdAt);
+        return d >= range.start && d < range.end;
+      });
     }
 
     if (searchTerm.trim() !== "") {
@@ -28,7 +78,7 @@ export function TransactionTable({ data }: { data: any[] }) {
     }
 
     return result;
-  }, [data, searchTerm, filterType]);
+  }, [data, searchTerm, filterType, filterTime, customStart, customEnd]);
 
   // Pagination Logic
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
@@ -46,9 +96,43 @@ export function TransactionTable({ data }: { data: any[] }) {
   // Reset page when filters change
   useMemo(() => {
     setCurrentPage(1);
-  }, [searchTerm, filterType]);
+  }, [searchTerm, filterType, filterTime, customStart, customEnd]);
+
+  // Computed metrics from filtered data
+  const totalVolume = filteredData.reduce((acc, t) => acc + t.amount, 0);
+  const totalTransactions = filteredData.length;
+  const totalProfit = filteredData.reduce((acc, t) => acc + t.profit, 0);
 
   return (
+    <div className="space-y-6">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="group p-5 bg-white/60 dark:bg-slate-900/50 backdrop-blur-md rounded-3xl border border-white/60 dark:border-slate-800/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
+          <div className="absolute -right-4 -top-4 w-20 h-20 bg-blue-100 dark:bg-blue-900/20 rounded-full blur-2xl opacity-50 group-hover:opacity-100 transition-opacity"></div>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-xl"><Activity className="w-4 h-4 text-blue-600 dark:text-blue-400" /></div>
+            <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Volume Uang Berputar</p>
+          </div>
+          <p className="text-2xl font-bold text-slate-800 dark:text-white">{formatRp(totalVolume)}</p>
+        </div>
+        <div className="group p-5 bg-white/60 dark:bg-slate-900/50 backdrop-blur-md rounded-3xl border border-white/60 dark:border-slate-800/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
+          <div className="absolute -right-4 -top-4 w-20 h-20 bg-orange-100 dark:bg-orange-900/20 rounded-full blur-2xl opacity-50 group-hover:opacity-100 transition-opacity"></div>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-orange-50 dark:bg-orange-900/30 rounded-xl"><ReceiptText className="w-4 h-4 text-orange-600 dark:text-orange-400" /></div>
+            <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Jumlah Transaksi</p>
+          </div>
+          <p className="text-2xl font-bold text-slate-800 dark:text-white">{totalTransactions} <span className="text-base font-medium text-orange-500">Trx</span></p>
+        </div>
+        <div className="group p-5 bg-white/60 dark:bg-slate-900/50 backdrop-blur-md rounded-3xl border border-white/60 dark:border-slate-800/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
+          <div className="absolute -right-4 -top-4 w-20 h-20 bg-emerald-100 dark:bg-emerald-900/20 rounded-full blur-2xl opacity-50 group-hover:opacity-100 transition-opacity"></div>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-xl"><TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /></div>
+            <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Total Profit</p>
+          </div>
+          <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">+{formatRp(totalProfit)}</p>
+        </div>
+      </div>
+
     <div className="bg-white/60 dark:bg-slate-900/50 backdrop-blur-md rounded-3xl border border-slate-200/60 dark:border-slate-800/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.1)] overflow-hidden">
       
       {/* Table Toolbar */}
@@ -68,7 +152,7 @@ export function TransactionTable({ data }: { data: any[] }) {
           />
         </div>
 
-        {/* Filters */}
+        {/* Type Filters */}
         <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-fit">
           {["Semua", "Transfer", "Tarik Tunai"].map(type => (
             <button
@@ -86,16 +170,55 @@ export function TransactionTable({ data }: { data: any[] }) {
         </div>
       </div>
 
+      {/* Time Filter Row */}
+      <div className="px-4 sm:px-6 pb-4 border-b border-slate-200/60 dark:border-slate-700/60 flex flex-wrap items-center gap-3">
+        <CalendarDays className="w-4 h-4 text-slate-400 shrink-0" />
+        <div className="flex gap-2 flex-wrap">
+          {["Semua Waktu", "Hari Ini", "Kemarin", "Minggu Ini", "Bulan Ini", "Custom"].map(time => (
+            <button
+              key={time}
+              onClick={() => setFilterTime(time)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-all ${
+                filterTime === time 
+                ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800 shadow-sm" 
+                : "bg-transparent text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600"
+              }`}
+            >
+              {time}
+            </button>
+          ))}
+        </div>
+        {filterTime === "Custom" && (
+          <div className="flex items-center gap-2 ml-1">
+            <input
+              type="date"
+              value={customStart}
+              onChange={(e) => setCustomStart(e.target.value)}
+              className="px-2 py-1.5 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <span className="text-xs text-slate-400">s/d</span>
+            <input
+              type="date"
+              value={customEnd}
+              onChange={(e) => setCustomEnd(e.target.value)}
+              className="px-2 py-1.5 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        )}
+      </div>
+
       {/* Data Table */}
       <div className="overflow-x-auto min-h-[500px]">
         <table className="min-w-full text-sm text-left">
           <thead className="bg-slate-50/80 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 font-semibold text-xs tracking-wider uppercase">
             <tr>
               <th className="px-6 py-4">Waktu</th>
+              <th className="px-6 py-4">Bank</th>
+              <th className="px-6 py-4">Tipe Transaksi</th>
               <th className="px-6 py-4">Layanan</th>
-              <th className="px-6 py-4">Pelanggan</th>
-              <th className="px-6 py-4">Tipe</th>
               <th className="px-6 py-4">Nominal</th>
+              <th className="px-6 py-4">Admin Bank</th>
+              <th className="px-6 py-4">Admin Pelanggan</th>
               <th className="px-6 py-4">Laba</th>
               <th className="px-6 py-4 text-right">Status</th>
             </tr>
@@ -106,11 +229,8 @@ export function TransactionTable({ data }: { data: any[] }) {
                 <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-500 dark:text-slate-400">
                   {new Date(trx.createdAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
                 </td>
-                <td className="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200 max-w-[200px] truncate" title={trx.service?.name}>
-                  {trx.service?.name || '-'}
-                </td>
-                <td className="px-6 py-4 max-w-[150px] truncate" title={trx.customerName}>
-                  {trx.customerName || <span className="text-slate-400 italic">Umum</span>}
+                <td className="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap">
+                  {trx.wallet?.name || '-'}
                 </td>
                 <td className="px-6 py-4">
                     <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
@@ -121,8 +241,17 @@ export function TransactionTable({ data }: { data: any[] }) {
                       {trx.type}
                     </span>
                 </td>
+                <td className="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200 max-w-[200px] truncate" title={trx.service?.name}>
+                  {trx.service?.name || '-'}
+                </td>
                 <td className="px-6 py-4 font-bold text-slate-900 dark:text-white whitespace-nowrap">
                   {formatRp(trx.amount)}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-slate-600 dark:text-slate-300">
+                  {formatRp(trx.adminBank)}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-slate-600 dark:text-slate-300">
+                  {formatRp(trx.adminUser)}
                 </td>
                 <td className="px-6 py-4 text-emerald-600 dark:text-emerald-400 font-bold whitespace-nowrap">
                     +{formatRp(trx.profit)}
@@ -144,7 +273,7 @@ export function TransactionTable({ data }: { data: any[] }) {
             ))}
             {currentData.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
+                <td colSpan={9} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
                   <p>Tidak ada transaksi yang sesuai dengan filter.</p>
                 </td>
               </tr>
@@ -179,6 +308,7 @@ export function TransactionTable({ data }: { data: any[] }) {
           </button>
         </div>
       </div>
+    </div>
     </div>
   );
 }

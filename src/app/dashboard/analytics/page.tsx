@@ -5,18 +5,25 @@ import { Activity } from "lucide-react";
 export const dynamic = "force-dynamic";
 
 export default async function AnalyticsPage() {
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  thirtyDaysAgo.setHours(0, 0, 0, 0);
-
+  // Fetch ALL data — filtering is done client-side based on the time filter
   const transactions = await prisma.transaction.findMany({
-    where: { createdAt: { gte: thirtyDaysAgo } },
+    orderBy: { createdAt: "desc" },
     select: { amount: true, profit: true, createdAt: true, type: true }
   });
 
   const expenses = await prisma.expense.findMany({
-    where: { createdAt: { gte: thirtyDaysAgo } },
-    select: { amount: true, category: true, createdAt: true }
+    orderBy: { createdAt: "desc" },
+    select: { amount: true, category: true, description: true, createdAt: true }
+  });
+
+  const receivables = await prisma.receivable.findMany({
+    orderBy: { syncedAt: "desc" },
+    select: { customerName: true, totalDebt: true, status: true, syncedAt: true }
+  });
+
+  const adjustments = await prisma.adjustment.findMany({
+    orderBy: { createdAt: "desc" },
+    include: { wallet: true }
   });
 
   return (
@@ -27,10 +34,13 @@ export default async function AnalyticsPage() {
         </div>
         <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Analitik & Laporan</h1>
       </div>
-      
-      <p className="text-slate-500 dark:text-slate-400 mt-[-1rem]">Performa operasional toko Anda dalam 30 hari terakhir.</p>
 
-      <AnalyticsCharts transactions={transactions} expenses={expenses} />
+      <AnalyticsCharts 
+        transactions={transactions} 
+        expenses={expenses} 
+        receivables={receivables}
+        adjustments={adjustments as any}
+      />
     </main>
   );
 }
